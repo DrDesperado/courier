@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  eureka-server:
+    image: eureka-server-eureka-server
+    ports:
+      - "8761:8761"
+
+  api-gateway:
+    image: gateway-service-gateway-service
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: cloud
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      CLOUD_URL: http://app:8081
+    depends_on:
+      - app
+
+
+  app:
+    container_name: app
+    build: .
+    ports:
+      - '8082:8082'
+    restart: always
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: courier
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_PROFILES_ACTIVE: cloud
+    links:
+      - db:db_domain
+    depends_on:
+      - db
+      - eureka-server
+
+
+  db:
+    container_name: courier-db
+    image: postgres:15.2
+    volumes:
+      - dbvolume:/var/lib/postgresql/dbvolume
+    ports:
+      - "5444:5432"
+    environment:
+      POSTGRES_DB: courier
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  auth:
+    container_name: auth-service
+    image: auth-service-app
+    ports:
+      - '9000:9000'
+    restart: always
+    environment:
+      POSTGRES_SERVER: users-db
+      POSTGRES_PORT: 5431
+      POSTGRES_DB: users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_PROFILES_ACTIVE: cloud
+    links:
+      - users-db:db_domain
+    depends_on:
+      - users-db
+  users-db:
+    container_name: users-db
+    image: postgres:15.2
+    volumes:
+      - usersvolume:/var/lib/postgresql/usersvolume
+    ports:
+      - "5431:5431"
+    environment:
+      PGPORT: 5431
+      POSTGRES_DB: users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+
+
+
+volumes:
+  dbvolume:
+  usersvolume:

@@ -1,0 +1,72 @@
+server:
+  port: 8080
+
+
+cloud:
+  eureka-host: localhost
+  url: http://localhost:8082
+
+spring:
+  application:
+    name: api-gateway-service
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER}
+    url: jdbc:postgresql://${POSTGRES_SERVER}:${POSTGRES_PORT}/${POSTGRES_DB}
+    password: ${POSTGRES_PASSWORD}
+
+  cloud:
+    gateway:
+      default-filters:
+        - TokenRelay
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: courier-service
+          uri: ${cloud.url}
+          predicates:
+            - Path=/courier/**
+
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8484/auth/realms/my-app
+
+        registration:
+          gateway-client:
+            provider: keycloak
+            client-id: gateway-client
+            scope: openid
+            client-secret: feoshKLfTOf8fDvZfuDfTojGl16PIMe3
+            authorization-grant-type: authorization_code
+            redirect-uri: http://localhost:8080/login/oauth2/code/keycloak
+
+
+eureka:
+  client:
+    enabled: false
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://${cloud.eureka-host}:8761/eureka/
+  instance:
+    hostname: localhost
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

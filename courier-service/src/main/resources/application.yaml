@@ -1,0 +1,113 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: courier-service
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER}
+    url: jdbc:postgresql://${POSTGRES_SERVER}:${POSTGRES_PORT}/${POSTGRES_DB}
+    password: ${POSTGRES_PASSWORD}
+
+  cache:
+    jcache:
+      provider: com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider
+    cache-names:
+      - buckets
+    caffeine:
+      spec: maximumSize=1000000,expireAfterAccess=3600s
+  bucket4j:
+    enabled: true
+    filters:
+      - cache-name: buckets
+        url: /courier/orders(/$|\?*)?$
+        rate-limits:
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'GET'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'POST'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+
+      - cache-name: buckets
+        url: /courier/couriers(/$|\?*)?$
+        rate-limits:
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'GET'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'POST'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+
+      - cache-name: buckets
+        url: /couriers/\d+
+        rate-limits:
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'GET'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+
+      - cache-name: buckets
+        url: /courier/orders/\d+
+        rate-limits:
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'GET'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+
+      - cache-name: buckets
+        url: /courier/couriers/meta-info/\d+
+        rate-limits:
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'GET'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+
+      - cache-name: buckets
+        url: /courier/orders/complete
+        rate-limits:
+          - cache-key: "getMethod()"
+            execute-condition: "getMethod() == 'POST'"
+            bandwidths: # maximum of 5 requests within 10 seconds
+              - capacity: 10
+                time: 1
+                unit: seconds
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8484/auth/realms/my-app
+          jwk-set-uri: http://localhost:8484/auth/realms/my-app/protocol/openid-connect/certs
+
+cloud:
+  eureka-host: localhost
+eureka:
+  client:
+    enabled: false
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://${cloud.eureka-host}:8761/eureka/
+  instance:
+    hostname: localhost
+
